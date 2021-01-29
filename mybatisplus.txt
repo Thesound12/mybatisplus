@@ -1,0 +1,64 @@
+1.使用日志
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+	
+2.主键自增：在实体类的主键上加注解。其他的类型详见源码
+  @TableId(type = IdType.AUTO)
+    private Long id;
+	
+3.需求：在插入或更新数据时，自动填入某些值，比如时间
+第一步：实体类中，属性填充策略。具体内容详见源码
+@TableField(fill = FieldFill.INSERT)
+    private Date createTime;
+    
+    @TableField(fill = FieldFill.UPDATE)
+    private Date updateTime;
+第二步：新建handler
+@Component
+@Slf4j
+public class MyMetaObjectHandler implements MetaObjectHandler {
+    @Override
+    public void insertFill(MetaObject metaObject) {
+        log.info("start insert fill ....");
+        this.setFieldValByName("createTime", new Date(), metaObject);
+        this.setFieldValByName("updateTime", new Date(), metaObject);
+    }
+
+    @Override
+    public void updateFill(MetaObject metaObject) {
+        log.info("start update fill ....");
+        this.setFieldValByName("updateTime", new Date(), metaObject);
+    }
+}
+
+4.需求：乐观锁
+第一步：在数据库中增加字段：version
+第二步：在实体类中增加属性：
+ @Version
+ private Integer version;
+第三步：注册组件
+@EnableTransactionManagement
+@MapperScan("com.bjfu.mapper")
+@Configuration
+public class MyBatisPlusConfig {
+    @Bean
+    public OptimisticLockerInterceptor optimisticLockerInterceptor() {
+        return new OptimisticLockerInterceptor();
+    }
+}
+
+5.分页
+第一步：配置拦截器即可
+@Bean
+    public PaginationInterceptor paginationInterceptor() {
+        return new PaginationInterceptor();
+    }
+第二步：
+ @Test
+    public void testPagination() {
+        Page<User> userPage = new Page<>(1, 5);
+        userMapper.selectPage(userPage, null);
+    }
+	
+
